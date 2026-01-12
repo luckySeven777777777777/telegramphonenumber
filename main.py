@@ -23,11 +23,10 @@ async def run_account(phone, contacts_df):
     session_path = os.path.join(TMP_SESSION_DIR, phone)
     client = TelegramClient(session_path, API_ID, API_HASH)
 
-    # ⭐ 自动登录（关键）
-    await client.start(phone=phone)
+    await client.connect()
 
     if not await client.is_user_authorized():
-        print(f"[ERROR] {phone} 登录失败")
+        print(f"[ERROR] {phone} 未登录，请先本地生成 session")
         await client.disconnect()
         return
 
