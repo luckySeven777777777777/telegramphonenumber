@@ -1,4 +1,3 @@
-
 from telethon import TelegramClient
 from telethon.tl.functions.contacts import ImportContactsRequest
 from telethon.tl.types import InputPhoneContact
@@ -9,11 +8,15 @@ import time
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 
+def normalize_phone(phone):
+    return str(phone).strip().replace("+", "")
+
 accounts_df = pd.read_excel("accounts.xlsx")
 os.makedirs("sessions", exist_ok=True)
+os.makedirs("contacts", exist_ok=True)
 
 for _, account in accounts_df.iterrows():
-    phone = str(account['phone'])
+    phone = normalize_phone(account['phone'])
     contacts_file = f"contacts/{phone}.xlsx"
 
     if not os.path.exists(contacts_file):
@@ -26,10 +29,11 @@ for _, account in accounts_df.iterrows():
     with TelegramClient(session, API_ID, API_HASH) as client:
         contacts = []
         for _, row in contacts_df.iterrows():
+            contact_phone = normalize_phone(row['phone'])
             contacts.append(InputPhoneContact(
                 client_id=0,
-                phone=str(row['phone']),
-                first_name=str(row.get('name', '')),
+                phone=contact_phone,
+                first_name=str(row.get('name', '')).strip(),
                 last_name=""
             ))
 
