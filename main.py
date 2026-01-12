@@ -21,13 +21,13 @@ accounts_df = pd.read_excel("accounts.xlsx")
 
 async def run_account(phone, contacts_df):
     session_path = os.path.join(TMP_SESSION_DIR, phone)
-
     client = TelegramClient(session_path, API_ID, API_HASH)
 
-    await client.connect()
+    # ⭐ 自动登录（关键）
+    await client.start(phone=phone)
 
     if not await client.is_user_authorized():
-        print(f"[SKIP] {phone} session 不存在或未登录")
+        print(f"[ERROR] {phone} 登录失败")
         await client.disconnect()
         return
 
@@ -48,6 +48,7 @@ async def run_account(phone, contacts_df):
         print(f"[OK] {phone} 导入 {len(contacts)} 个联系人")
 
     await client.disconnect()
+
 
 
 async def main():
