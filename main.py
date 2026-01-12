@@ -3,42 +3,54 @@ from telethon.tl.functions.contacts import ImportContactsRequest
 from telethon.tl.types import InputPhoneContact
 import pandas as pd
 import os
-import time
+import asyncio
 
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 
 def normalize_phone(phone):
-    return str(phone).strip().replace("+", "")
+    return "".join(filter(str.isdigit, str(phone)))
 
 accounts_df = pd.read_excel("accounts.xlsx")
-os.makedirs("sessions", exist_ok=True)
-os.makedirs("contacts", exist_ok=True)
 
-for _, account in accounts_df.iterrows():
-    phone = normalize_phone(account['phone'])
-    contacts_file = f"contacts/{phone}.xlsx"
-
-    if not os.path.exists(contacts_file):
-        print(f"[SKIP] {phone} 没有对应联系人文件")
-        continue
-
-    contacts_df = pd.read_excel(contacts_file)
+async def run_account(phone, contacts_df):
     session = f"sessions/{phone}"
+    client = TelegramClient(session, API_ID, API_HASH)
 
-    with TelegramClient(session, API_ID, API_HASH) as client:
-        contacts = []
-        for _, row in contacts_df.iterrows():
-            contact_phone = normalize_phone(row['phone'])
-            contacts.append(InputPhoneContact(
-                client_id=0,
-                phone=contact_phone,
-                first_name=str(row.get('name', '')).strip(),
-                last_name=""
-            ))
+    await client.connect()
 
-        if contacts:
-            client(ImportContactsRequest(contacts))
-            print(f"[OK] {phone} 导入 {len(contacts)} 个联系人")
+    if not await client.is_user_authorized():
+        print(f"[SKIP] {phone} session 不存在")
+        await client.disconnect()
+        return
 
-    time.sleep(60)
+    contacts = []
+    for _, row in contacts_df.iterrows():
+        contact_phone = normalize_phone(row["phone"])
+        contacts.append(InputPhoneContact(
+            client_id=0,
+            phone=contact_phone,
+            first_name=str(row.get("name", "")).strip(),
+            last_name=""
+        ))
+
+    if contacts:
+        await client(ImportContactsRequest(contacts))
+        print(f"[OK] {phone} 导入 {len(contacts)} 个联系人")
+
+    await client.disconnect()
+
+async def main():
+    for _, account in accounts_df.iterrows():
+        phone = normalize_phone(account["phone"])
+        contacts_file = f"contacts/{phone}.xlsx"
+
+        if not os.path.exists(contacts_file):
+            print(f"[SKIP] {phone} 没有联系人文件")
+            continue
+
+        contacts_df = pd.read_excel(contacts_file)
+        await run_account(phone, contacts_df)
+        await asyncio.sleep(60)
+
+asyncio.run(main())
