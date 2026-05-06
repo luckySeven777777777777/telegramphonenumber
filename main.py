@@ -8,7 +8,7 @@ import asyncio
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 
-TMP_SESSION_DIR = "/tmp/telegram_sessions"
+TMP_SESSION_DIR = "./sessions"
 os.makedirs(TMP_SESSION_DIR, exist_ok=True)
 
 
