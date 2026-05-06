@@ -1,6 +1,7 @@
 from telethon import TelegramClient
 from telethon.tl.functions.contacts import ImportContactsRequest
 from telethon.tl.types import InputPhoneContact
+from datetime import datetime
 import pandas as pd
 import os
 import asyncio
@@ -58,11 +59,17 @@ async def run_account(phone, contacts_df):
         df_final.to_excel(output_file, index=False)
         print(f"[FINISH] {phone} 检查完成，结果已存入 {output_file}")
 
-        # ================== 核心新增代码：发回手机 ==================
+# ================== 核心新增代码：发回手机 ==================
         try:
+            # 自动获取当前日期，格式为：2026-05-06
+            current_date = datetime.now().strftime('%Y-%m-%d')
+            
             # "me" 代表发给账号自己（即你的 Telegram 收藏夹/Saved Messages）
-            # 这样你打开手机 Telegram 就能看到这个文件
-            await client.send_file("me", output_file, caption=f"📊 检查完成！\n账号: +{phone}\n时间: May 6, 2026")
+            await client.send_file(
+                "me", 
+                output_file, 
+                caption=f"📊 检查完成！\n账号: +{phone}\n日期: {current_date}"
+            )
             print(f"[SENT] 结果文件已发送至 Telegram 收藏夹")
         except Exception as e:
             print(f"[SEND ERROR] 发送文件失败: {e}")
