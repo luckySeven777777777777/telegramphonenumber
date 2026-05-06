@@ -29,40 +29,44 @@ async def run_account(phone, contacts_df):
         await client.disconnect()
         return
 
-    # 准备导入列表
+    # --- 之前的检查逻辑保持不变 ---
     contacts = [
         InputPhoneContact(client_id=0, phone=normalize_phone(row["phone"]), first_name="Check", last_name="")
         for _, row in contacts_df.iterrows()
     ]
 
     if contacts:
-        # 执行检查任务
         result = await client(ImportContactsRequest(contacts))
-        
-        # 结果分类存储容器
         results_list = []
-        # 将返回的已注册用户存入字典，方便匹配
         registered_users = {u.phone: u for u in result.users}
 
         for contact in contacts:
             p = contact.phone
-            user = registered_users.get(p) or registered_users.get(f"1{p}") # 兼容加不加1的情况
+            user = registered_users.get(p) or registered_users.get(f"1{p}")
 
             if user:
                 if user.username:
-                    # 分类：Username
                     results_list.append([p, "✅ 已开通", "Username", f"@{user.username}"])
                 else:
-                    # 分类：Tg Data
                     results_list.append([p, "✅ 已开通", "Tg Data", f"ID: {user.id}"])
             else:
-                # 分类：No Tg Data
                 results_list.append([p, "❌ 未开通", "No Tg Data", "-"])
 
-        # 将结果保存为 Excel，对应你截图的效果
+        # 保存 Excel
+        output_file = f"checked_{phone}.xlsx"
         df_final = pd.DataFrame(results_list, columns=["原始号码 (+1)", "状态", "分类结果", "详细信息 (Username/ID)"])
-        df_final.to_excel(f"checked_{phone}.xlsx", index=False)
-        print(f"[FINISH] {phone} 检查完成，结果已存入 checked_{phone}.xlsx")
+        df_final.to_excel(output_file, index=False)
+        print(f"[FINISH] {phone} 检查完成，结果已存入 {output_file}")
+
+        # ================== 核心新增代码：发回手机 ==================
+        try:
+            # "me" 代表发给账号自己（即你的 Telegram 收藏夹/Saved Messages）
+            # 这样你打开手机 Telegram 就能看到这个文件
+            await client.send_file("me", output_file, caption=f"📊 检查完成！\n账号: +{phone}\n时间: May 6, 2026")
+            print(f"[SENT] 结果文件已发送至 Telegram 收藏夹")
+        except Exception as e:
+            print(f"[SEND ERROR] 发送文件失败: {e}")
+        # =========================================================
 
     await client.disconnect()
 
