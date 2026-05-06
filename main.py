@@ -41,25 +41,27 @@ async def run_account(phone, contacts_df):
 
     if contacts:
         # 执行检查任务
+# 执行检查任务
         result = await client(ImportContactsRequest(contacts))
         
-        # 结果匹配容器
         results_list = []
-        # 将返回的已注册用户存入字典，Key 统一做去前缀处理以增强匹配准确度
-        registered_users = {normalize_phone(u.phone): u for u in result.users}
+        # --- 优化点：Key 统一只保留最后 10 位数字（美国号码主体），彻底解决 1 或 +1 的前缀干扰 ---
+        registered_users = {normalize_phone(u.phone)[-10:]: u for u in result.users}
 
         for contact in contacts:
-            p = contact.phone
-            # 匹配逻辑：优先找原号码，找不到再尝试各种前缀组合
-            user = registered_users.get(p) or registered_users.get(p.lstrip('1')) or registered_users.get(f"1{p}")
+            # 同样取最后 10 位进行匹配
+            p_full = contact.phone
+            p_suffix = p_full[-10:]
+            
+            user = registered_users.get(p_suffix)
 
             if user:
                 if user.username:
-                    results_list.append([p, "✅ 已开通", "Username", f"@{user.username}"])
+                    results_list.append([p_full, "✅ 已开通", "Username", f"@{user.username}"])
                 else:
-                    results_list.append([p, "✅ 已开通", "Tg Data", f"ID: {user.id}"])
+                    results_list.append([p_full, "✅ 已开通", "Tg Data", f"ID: {user.id}"])
             else:
-                results_list.append([p, "❌ 未开通", "No Tg Data", "-"])
+                results_list.append([p_full, "❌ 未开通", "No Tg Data", "-"])
 
         # --- 3. 保存并发送结果 ---
         output_file = f"checked_{phone}.xlsx"
